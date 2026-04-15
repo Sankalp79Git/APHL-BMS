@@ -1,0 +1,1414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AeliusParallel Group · Budget Management System</title>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+
+:root {
+  --bg:#07090F; --surface:#0D1118; --surface2:#121820; --surface3:#181F2A;
+  --text:#E6DFD0; --muted:#5A6278; --line:#1A2030; --line2:#202838;
+  --gold:#C8A96E; --ael:#5B9BD5; --ver:#7EC8A4; --green:#6DBF82;
+  --red:#E8604A; --orange:#E07B54; --purple:#9B7FD4; --yellow:#E8C56E;
+  --teal:#58A8AA; --radius:8px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.028'/%3E%3C/svg%3E");opacity:.55;}
+
+@keyframes fadeDown{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+
+/* ── LOADER ── */
+#loader{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:8000;flex-direction:column;gap:16px;}
+#loader .ring{width:36px;height:36px;border:2px solid var(--line2);border-top-color:var(--gold);border-radius:50%;animation:spin 1s linear infinite;}
+#loader .txt{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);animation:pulse 1.5s ease infinite;}
+#loader.hidden{display:none;}
+
+/* ── SCREENS ── */
+.screen{display:none;animation:fadeUp .4s ease both;}
+.screen.active{display:block;}
+.screen.active#screen-login{display:flex;}
+.screen.active#screen-app{display:flex;}
+
+/* ── LOGIN ── */
+#screen-login{min-height:100vh;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse 60% 50% at 50% 40%,rgba(200,169,110,.07) 0%,transparent 70%);}
+.login-box{width:420px;background:var(--surface);border:1px solid var(--line2);border-radius:14px;padding:48px 40px;
+  box-shadow:0 0 80px rgba(200,169,110,.08),0 0 0 1px rgba(200,169,110,.04);}
+.login-logo{text-align:center;margin-bottom:40px;}
+.login-brand{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:.14em;
+  background:linear-gradient(90deg,var(--gold),var(--ael),var(--ver));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.login-sub{font-size:8px;letter-spacing:.24em;color:var(--muted);text-transform:uppercase;margin-top:5px;}
+.login-divider{height:1px;background:linear-gradient(90deg,transparent,var(--line2),transparent);margin:6px 0 32px;}
+
+/* ── FORM ── */
+.form-group{margin-bottom:16px;}
+.form-group label{display:block;font-size:8.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:7px;}
+.form-group input,.form-group select,.form-group textarea{
+  width:100%;background:var(--surface2);border:1px solid var(--line2);border-radius:var(--radius);
+  padding:11px 14px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;outline:none;transition:border-color .2s;}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--gold);}
+.form-group select option{background:var(--surface2);color:var(--text);}
+.form-group textarea{resize:vertical;min-height:64px;}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:10px 18px;border-radius:var(--radius);border:none;
+  font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:all .2s;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.btn-primary{background:linear-gradient(135deg,rgba(200,169,110,.22),rgba(200,169,110,.1));border:1px solid rgba(200,169,110,.4);color:var(--gold);width:100%;justify-content:center;}
+.btn-primary:hover:not(:disabled){background:rgba(200,169,110,.2);box-shadow:0 0 24px rgba(200,169,110,.14);}
+.btn-sm{padding:7px 13px;font-size:9px;}
+.btn-green{background:rgba(109,191,130,.12);border:1px solid rgba(109,191,130,.3);color:var(--green);}
+.btn-green:hover{background:rgba(109,191,130,.22);}
+.btn-red{background:rgba(232,96,74,.12);border:1px solid rgba(232,96,74,.3);color:var(--red);}
+.btn-red:hover{background:rgba(232,96,74,.22);}
+.btn-orange{background:rgba(224,123,84,.12);border:1px solid rgba(224,123,84,.3);color:var(--orange);}
+.btn-orange:hover{background:rgba(224,123,84,.22);}
+.btn-blue{background:rgba(91,155,213,.12);border:1px solid rgba(91,155,213,.3);color:var(--ael);}
+.btn-blue:hover{background:rgba(91,155,213,.22);}
+.btn-muted{background:rgba(90,98,120,.12);border:1px solid rgba(90,98,120,.25);color:var(--muted);}
+.btn-muted:hover{background:rgba(90,98,120,.22);color:var(--text);}
+.btn-gold{background:rgba(200,169,110,.12);border:1px solid rgba(200,169,110,.3);color:var(--gold);}
+.btn-gold:hover{background:rgba(200,169,110,.22);}
+
+.error-msg{background:rgba(232,96,74,.1);border:1px solid rgba(232,96,74,.3);border-radius:var(--radius);
+  padding:10px 14px;font-size:11px;color:var(--red);margin-top:12px;display:none;}
+
+/* ── APP SHELL ── */
+#screen-app{min-height:100vh;flex-direction:column;}
+.topbar{padding:13px 28px;border-bottom:1px solid var(--line2);display:flex;align-items:center;
+  justify-content:space-between;background:var(--surface);position:sticky;top:0;z-index:100;}
+.topbar-brand{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.12em;
+  background:linear-gradient(90deg,var(--gold),var(--ael));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.topbar-right{display:flex;align-items:center;gap:14px;}
+.user-pill{display:flex;align-items:center;gap:9px;background:var(--surface2);border:1px solid var(--line2);border-radius:20px;padding:5px 14px 5px 7px;}
+.user-avatar{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;letter-spacing:.04em;}
+.user-name{font-size:10px;letter-spacing:.05em;}
+.user-role{font-size:8px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;}
+
+/* ── NAV ── */
+.nav-tabs{display:flex;gap:2px;padding:11px 28px 0;border-bottom:1px solid var(--line2);background:var(--surface);overflow-x:auto;}
+.nav-tab{padding:9px 17px 11px;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+  cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;border-radius:4px 4px 0 0;}
+.nav-tab:hover{color:var(--text);}
+.nav-tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+.nav-tab .nbadge{display:inline-block;background:var(--red);color:#fff;font-size:7px;border-radius:8px;padding:1px 5px;margin-left:5px;vertical-align:middle;}
+
+/* ── CONTENT ── */
+.content{flex:1;padding:26px 28px;max-width:1440px;margin:0 auto;width:100%;}
+.tab-content{display:none;animation:fadeUp .3s ease both;}
+.tab-content.active{display:block;}
+
+/* ── CARDS ── */
+.card{background:var(--surface);border:1px solid var(--line2);border-radius:10px;padding:20px 22px;}
+.card-title{font-size:8.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;}
+
+/* ── STAT GRID ── */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:13px;margin-bottom:22px;}
+.stat-card{background:var(--surface);border:1px solid var(--line2);border-radius:10px;padding:17px 19px;position:relative;overflow:hidden;}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.stat-card.gold::before{background:var(--gold);}
+.stat-card.green::before{background:var(--green);}
+.stat-card.red::before{background:var(--red);}
+.stat-card.blue::before{background:var(--ael);}
+.stat-card.teal::before{background:var(--teal);}
+.stat-card.purple::before{background:var(--purple);}
+.stat-label{font-size:8px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:7px;}
+.stat-value{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;line-height:1;}
+.stat-sub{font-size:9px;color:var(--muted);margin-top:5px;}
+
+/* ── TABLE ── */
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:11px;}
+thead tr{border-bottom:1px solid var(--line2);}
+thead th{font-size:8px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);padding:10px 13px;text-align:left;white-space:nowrap;}
+tbody tr{border-bottom:1px solid var(--line);transition:background .15s;}
+tbody tr:hover{background:rgba(255,255,255,.018);}
+tbody td{padding:11px 13px;vertical-align:middle;}
+
+/* ── BADGES ── */
+.badge{display:inline-block;font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:20px;border:1px solid;}
+.badge-pending_mgmt{color:var(--yellow);border-color:rgba(232,197,110,.3);background:rgba(232,197,110,.08);}
+.badge-pending_pms{color:var(--orange);border-color:rgba(224,123,84,.3);background:rgba(224,123,84,.08);}
+.badge-pending_hr{color:var(--purple);border-color:rgba(155,127,212,.3);background:rgba(155,127,212,.08);}
+.badge-pms_approved{color:var(--teal);border-color:rgba(88,168,170,.3);background:rgba(88,168,170,.08);}
+.badge-pms_partial{color:var(--orange);border-color:rgba(224,123,84,.3);background:rgba(224,123,84,.08);}
+.badge-hr_approved{color:var(--teal);border-color:rgba(88,168,170,.3);background:rgba(88,168,170,.08);}
+.badge-approved{color:var(--green);border-color:rgba(109,191,130,.3);background:rgba(109,191,130,.08);}
+.badge-partial{color:var(--orange);border-color:rgba(224,123,84,.3);background:rgba(224,123,84,.08);}
+.badge-rejected{color:var(--red);border-color:rgba(232,96,74,.3);background:rgba(232,96,74,.08);}
+.badge-pms_rejected{color:var(--red);border-color:rgba(232,96,74,.3);background:rgba(232,96,74,.08);}
+.badge-hr_rejected{color:var(--red);border-color:rgba(232,96,74,.3);background:rgba(232,96,74,.08);}
+.badge-draft{color:var(--muted);border-color:rgba(90,98,120,.3);background:rgba(90,98,120,.08);}
+
+/* ── PROGRESS ── */
+.prog-bar{height:3px;background:var(--line2);border-radius:2px;overflow:hidden;margin-top:4px;}
+.prog-fill{height:100%;border-radius:2px;transition:width .4s ease;}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(7,9,15,.88);backdrop-filter:blur(5px);z-index:1000;
+  display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeUp .2s ease both;}
+.modal-overlay.hidden{display:none;}
+.modal{background:var(--surface);border:1px solid var(--line2);border-radius:12px;padding:30px;
+  width:100%;max-width:600px;max-height:90vh;overflow-y:auto;box-shadow:0 0 80px rgba(0,0,0,.7);}
+.modal-lg{max-width:780px;}
+.modal-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:.1em;color:var(--gold);margin-bottom:22px;}
+.modal-footer{display:flex;gap:9px;margin-top:22px;justify-content:flex-end;flex-wrap:wrap;}
+
+/* ── LINE ITEMS ── */
+.li-wrap{border:1px solid var(--line2);border-radius:var(--radius);overflow:hidden;margin-bottom:12px;}
+.li-row{display:grid;align-items:center;border-bottom:1px solid var(--line);}
+.li-row:last-child{border-bottom:none;}
+.li-row input,.li-row select{background:transparent;border:none;border-right:1px solid var(--line);
+  padding:8px 11px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;outline:none;width:100%;}
+.li-row input:last-child,.li-row select:last-child{border-right:none;}
+.li-row input:focus,.li-row select:focus{background:rgba(200,169,110,.03);}
+.li-header{background:var(--surface2);font-size:7.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);}
+.li-header div{padding:7px 11px;border-right:1px solid var(--line);}
+.li-header div:last-child{border-right:none;}
+.del-btn{background:none;border:none;color:var(--muted);cursor:pointer;padding:8px 11px;font-size:13px;transition:color .2s;text-align:center;}
+.del-btn:hover{color:var(--red);}
+
+/* ── SECTION HEADER ── */
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;}
+.sec-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:.1em;}
+.sec-sub{font-size:9px;color:var(--muted);letter-spacing:.09em;margin-top:2px;}
+
+/* ── APPROVAL DETAIL ── */
+.apv-detail{background:var(--surface2);border-radius:var(--radius);padding:13px 15px;margin-bottom:13px;}
+.apv-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:7px;font-size:11px;gap:12px;}
+.apv-row:last-child{margin-bottom:0;}
+.apv-lbl{color:var(--muted);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;margin-top:1px;}
+.apv-val{text-align:right;word-break:break-word;}
+
+/* ── REMARK BOX ── */
+.remark-box{background:var(--surface2);border-left:3px solid var(--gold);padding:9px 13px;border-radius:0 var(--radius) var(--radius) 0;font-size:10px;color:var(--muted);margin-top:7px;font-style:italic;}
+.remark-box.green{border-left-color:var(--green);}
+.remark-box.red{border-left-color:var(--red);}
+.remark-box.orange{border-left-color:var(--orange);}
+
+/* ── DIVIDER ── */
+.divider{height:1px;background:var(--line2);margin:18px 0;}
+
+/* ── EMPTY STATE ── */
+.empty{text-align:center;padding:48px 24px;color:var(--muted);}
+.empty .ico{font-size:30px;margin-bottom:10px;opacity:.35;}
+.empty p{font-size:11px;letter-spacing:.05em;}
+
+/* ── NOTIF ── */
+.notif{position:fixed;bottom:22px;right:22px;background:var(--surface);border:1px solid var(--line2);
+  border-radius:10px;padding:13px 17px;font-size:11px;z-index:2000;max-width:300px;
+  box-shadow:0 4px 30px rgba(0,0,0,.5);animation:fadeUp .3s ease both;display:flex;align-items:center;gap:9px;}
+.notif.success{border-color:rgba(109,191,130,.4);}
+.notif.error{border-color:rgba(232,96,74,.4);}
+.notif.info{border-color:rgba(91,155,213,.4);}
+
+/* ── LOG ── */
+.log-entry{display:flex;gap:11px;padding:9px 0;border-bottom:1px solid var(--line);font-size:10px;}
+.log-dot{width:5px;height:5px;border-radius:50%;margin-top:5px;flex-shrink:0;}
+
+/* ── PMS SECTION DIVIDER ── */
+.pms-section{background:linear-gradient(90deg,rgba(91,155,213,.06),transparent);border-left:3px solid var(--ael);
+  padding:10px 14px;border-radius:0 var(--radius) var(--radius) 0;margin:14px 0 10px;font-size:9px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--ael);}
+
+/* ── COMPANY TAG ── */
+.co-tag{display:inline-block;font-size:7.5px;letter-spacing:.09em;text-transform:uppercase;padding:2px 7px;border-radius:10px;border:1px solid;}
+.co-aphl{color:var(--ael);border-color:rgba(91,155,213,.3);background:rgba(91,155,213,.07);}
+.co-ver{color:var(--ver);border-color:rgba(126,200,164,.3);background:rgba(126,200,164,.07);}
+.co-both{color:var(--gold);border-color:rgba(200,169,110,.3);background:rgba(200,169,110,.07);}
+
+/* ── MANPOWER CARD ── */
+.mp-card{background:var(--surface2);border:1px solid var(--line2);border-radius:var(--radius);padding:13px 15px;margin-bottom:10px;}
+.mp-card-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+.mp-title{font-size:12px;font-weight:500;}
+.mp-meta{font-size:9px;color:var(--muted);margin-top:2px;}
+
+@media(max-width:700px){
+  .stat-grid{grid-template-columns:1fr 1fr;}
+  .content{padding:14px;}
+  .topbar,.nav-tabs{padding-left:14px;padding-right:14px;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="ring"></div>
+  <div class="txt">Initialising</div>
+</div>
+
+<!-- LOGIN -->
+<div id="screen-login" class="screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-brand">AeliusParallel Group</div>
+      <div class="login-sub">Budget Management System</div>
+    </div>
+    <div class="login-divider"></div>
+    <div class="form-group">
+      <label>Email Address</label>
+      <input type="email" id="login-email" placeholder="you@aeliusparallel.com" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn btn-primary" id="login-btn" onclick="doLogin()">Sign In →</button>
+    <div class="error-msg" id="login-error">Invalid credentials. Please try again.</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="screen-app" class="screen">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div class="topbar-brand">BMS · AP Group</div>
+      <div style="font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);background:rgba(200,169,110,.08);border:1px solid rgba(200,169,110,.2);border-radius:4px;padding:4px 10px;" id="top-period"></div>
+    </div>
+    <div class="topbar-right">
+      <div class="user-pill">
+        <div class="user-avatar" id="top-avatar"></div>
+        <div>
+          <div class="user-name" id="top-uname"></div>
+          <div class="user-role" id="top-urole"></div>
+        </div>
+      </div>
+      <button class="btn btn-muted btn-sm" onclick="doLogout()">Sign Out</button>
+    </div>
+  </div>
+  <div class="nav-tabs" id="main-nav"></div>
+  <div class="content">
+    <div id="tab-dashboard"  class="tab-content"></div>
+    <div id="tab-mybudget"   class="tab-content"></div>
+    <div id="tab-manpower"   class="tab-content"></div>
+    <div id="tab-approvals"  class="tab-content"></div>
+    <div id="tab-hr"         class="tab-content"></div>
+    <div id="tab-spends"     class="tab-content"></div>
+    <div id="tab-admin"      class="tab-content"></div>
+  </div>
+</div>
+
+<!-- ══ MODALS ══ -->
+
+<!-- Submit Budget -->
+<div class="modal-overlay hidden" id="modal-budget">
+  <div class="modal modal-lg">
+    <div class="modal-title" id="mb-title">Submit Budget</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+      <div class="form-group"><label>Month</label><select id="mb-month"></select></div>
+      <div class="form-group"><label>Year</label><select id="mb-year"></select></div>
+      <div class="form-group" id="mb-company-wrap" style="display:none;"><label>Company</label>
+        <select id="mb-company"><option value="APHL">APHL</option><option value="Veridian">Veridian</option><option value="Both">Both</option></select>
+      </div>
+    </div>
+    <div class="form-group"><label>Notes / Justification</label><textarea id="mb-notes" rows="2" placeholder="Brief justification for management review…"></textarea></div>
+    <div id="mb-sections"></div>
+    <button class="btn btn-muted btn-sm" onclick="addBudgetLine('main')" style="margin-bottom:14px;" id="mb-add-btn">+ Add Line</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-top:1px solid var(--line2);">
+      <div style="font-size:10px;color:var(--muted);">Total Budget Request</div>
+      <div style="font-size:22px;font-family:'Cormorant Garamond',serif;font-weight:600;color:var(--gold);" id="mb-total">₹0</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-muted btn-sm" onclick="closeModal('modal-budget')">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="submitBudget()">Submit for Approval →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Raise Manpower Req -->
+<div class="modal-overlay hidden" id="modal-mp">
+  <div class="modal">
+    <div class="modal-title">Raise Manpower Requisition</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="form-group"><label>Month</label><select id="mp-month"></select></div>
+      <div class="form-group"><label>Year</label><select id="mp-year"></select></div>
+    </div>
+    <div id="mp-roles-wrap">
+      <div class="li-wrap" id="mp-roles-list">
+        <div class="li-row li-header" style="grid-template-columns:1fr 60px 120px 1fr;">
+          <div>Role / Designation</div><div>Count</div><div>Est. Monthly Cost (₹)</div><div>Justification</div>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-muted btn-sm" onclick="addMPRole()" style="margin-bottom:14px;">+ Add Role</button>
+    <div class="modal-footer">
+      <button class="btn btn-muted btn-sm" onclick="closeModal('modal-mp')">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="submitMPReq()">Submit Requisition →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Approve Budget -->
+<div class="modal-overlay hidden" id="modal-approve">
+  <div class="modal modal-lg">
+    <div class="modal-title" id="apv-title">Review Budget</div>
+    <div id="apv-body"></div>
+    <div class="form-group" style="margin-top:14px;"><label>Remarks</label><textarea id="apv-remarks" rows="2" placeholder="Optional remarks…"></textarea></div>
+    <div class="modal-footer" id="apv-footer"></div>
+  </div>
+</div>
+
+<!-- Partial Approve -->
+<div class="modal-overlay hidden" id="modal-partial">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-title">Partial Approval</div>
+    <div class="form-group"><label>Approved Amount (₹)</label><input type="number" id="pa-amount" placeholder="Enter amount" min="0"></div>
+    <div class="form-group"><label>Remarks</label><textarea id="pa-remarks" rows="3" placeholder="Reason for partial approval…"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn btn-muted btn-sm" onclick="closeModal('modal-partial')">Cancel</button>
+      <button class="btn btn-orange btn-sm" onclick="confirmPartial()">Confirm Partial Approval</button>
+    </div>
+  </div>
+</div>
+
+<!-- Update Spends -->
+<div class="modal-overlay hidden" id="modal-spends">
+  <div class="modal modal-lg">
+    <div class="modal-title" id="sp-title">Update Actual Spend</div>
+    <div id="sp-body"></div>
+    <div class="form-group" style="margin-top:14px;"><label>Accounts Notes</label><textarea id="sp-notes" rows="2" placeholder="Notes…"></textarea></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-top:1px solid var(--line2);margin-top:10px;">
+      <div style="font-size:10px;color:var(--muted);">Total Actual Spend</div>
+      <div style="font-size:22px;font-family:'Cormorant Garamond',serif;font-weight:600;" id="sp-total">₹0</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-muted btn-sm" onclick="closeModal('modal-spends')">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="saveSpends()">Save Spends</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  FIREBASE CONFIG
+// ══════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyBAxZH7hBDsM2vW3YnExsVSMRbx2bnbEEI",
+  authDomain: "aeliusparallel-bms.firebaseapp.com",
+  projectId: "aeliusparallel-bms",
+  storageBucket: "aeliusparallel-bms.firebasestorage.app",
+  messagingSenderId: "625617874729",
+  appId: "1:625617874729:web:aae839ab0dc48d8d611138"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+// ══════════════════════════════════════════════
+//  USER MAP  (UID → profile)
+// ══════════════════════════════════════════════
+const USER_MAP = {
+  'CF1JtS1agSVNgC00pMZg1yv65su2': { name:'HR Manager',              role:'hr',         vertical:'HR',                      entity:'Shared',   color:'var(--purple)' },
+  'SWRYj0lgyheiHLpgjXAcXlepYMp2': { name:'CRM Manager',             role:'vertical',   vertical:'Shared CRM',              entity:'Shared',   color:'var(--ver)' },
+  'wHqd3TZfrnZqKmFxwOu115V3Qej2': { name:'Asset Management Mgr',    role:'vertical',   vertical:'Asset Management',        entity:'Shared',   color:'var(--teal)', isShared:true },
+  'WIgiqmZMgQUCd2WpB4oCKBsuYyA3': { name:'Back Office Admin Mgr',   role:'vertical',   vertical:'Back Office Admin',       entity:'Shared',   color:'var(--teal)', isShared:true },
+  's5Haz1g48BW2qiwnYKhFcRx1d713': { name:'Training Manager',        role:'vertical',   vertical:'Training & Skill',        entity:'Veridian', color:'var(--ver)' },
+  'dedI3bi7jZQn0wsZFE8gTHktXmS2': { name:'SOPSO Manager',           role:'vertical',   vertical:'SOPSO',                   entity:'Veridian', color:'var(--yellow)' },
+  'VqeP5vquk0QYpK8klYBYk5TWQQy1': { name:'Marketing Manager',       role:'vertical',   vertical:'Marketing',               entity:'Veridian', color:'var(--purple)' },
+  'siJKYnMCCbQu6Kgsdo1rSDXeAn12': { name:'Ecommerce Manager',       role:'vertical',   vertical:'Ecommerce & Online Sales', entity:'Veridian', color:'var(--ael)' },
+  'u1sHUswzl5YiOZQZSyVZRnlUP7z2': { name:'Procurement Manager',     role:'vertical',   vertical:'Procurement Services',    entity:'APHL',     color:'var(--ver)' },
+  'eYfPHrt09wReDoyALFEFrkY1tM02': { name:'Warehousing Manager',     role:'vertical',   vertical:'Warehousing Services',    entity:'APHL',     color:'var(--purple)' },
+  'bO1jEnQoYtO6nIsvkAifS8Vvci82': { name:'QC&A Manager',            role:'vertical',   vertical:'Quality Control & Assurance', entity:'APHL', color:'var(--green)' },
+  'oEk7EWRZhfPliEDxwCwXaY0hiQC3': { name:'R&D Manager',             role:'vertical',   vertical:'Research & Development',  entity:'APHL',     color:'var(--ael)' },
+  'EcCsCDlTIzRbBwvAq6hAddcOk5X2': { name:'PMS Manager',             role:'pms',        vertical:'PMS',                     entity:'Group',    color:'var(--orange)' },
+  'knON7cwjPwhE6tyqHSylXXtqLXP2': { name:'Accounts Team',           role:'accounts',   vertical:null,                      entity:null,       color:'var(--teal)' },
+  'W4PrylUf1DSIsfIq5dHGrUA2rK82': { name:'Management',              role:'management', vertical:null,                      entity:null,       color:'var(--gold)' },
+};
+
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const CATEGORIES = ['Salaries & Wages','Travel & Conveyance','Materials & Consumables','Utilities','Marketing & Promotions','IT & Software','Repairs & Maintenance','Professional Services','Logistics & Freight','Training & Development','Manpower','Miscellaneous'];
+const CURR_YEAR = 2026;
+
+let currentUser = null;
+let activeBudgetId = null;
+let lineCounters = {};
+
+// ══════════════════════════════════════════════
+//  BOOT
+// ══════════════════════════════════════════════
+auth.onAuthStateChanged(async user => {
+  if (user) {
+    const profile = USER_MAP[user.uid];
+    if (!profile) { await auth.signOut(); showLogin(); return; }
+    currentUser = { uid: user.uid, email: user.email, ...profile };
+    hideLoader();
+    initApp();
+  } else {
+    hideLoader();
+    showLogin();
+  }
+});
+
+function hideLoader(){ document.getElementById('loader').classList.add('hidden'); }
+function showLogin(){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-login').classList.add('active');
+}
+
+// ══════════════════════════════════════════════
+//  AUTH
+// ══════════════════════════════════════════════
+async function doLogin(){
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  const btn   = document.getElementById('login-btn');
+  const err   = document.getElementById('login-error');
+  err.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  try {
+    await auth.signInWithEmailAndPassword(email, pass);
+  } catch(e) {
+    err.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Sign In →';
+  }
+}
+
+async function doLogout(){
+  await auth.signOut();
+  currentUser = null;
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  showLogin();
+  document.getElementById('login-email').value='';
+  document.getElementById('login-pass').value='';
+  document.getElementById('login-btn').disabled=false;
+  document.getElementById('login-btn').textContent='Sign In →';
+}
+
+document.getElementById('login-pass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+
+// ══════════════════════════════════════════════
+//  APP INIT
+// ══════════════════════════════════════════════
+function initApp(){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-app').classList.add('active');
+
+  const now = new Date();
+  document.getElementById('top-period').textContent = `${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
+  document.getElementById('top-uname').textContent = currentUser.name;
+  document.getElementById('top-urole').textContent = currentUser.role==='vertical'||currentUser.role==='hr'||currentUser.role==='pms' ? currentUser.vertical : currentUser.role.toUpperCase();
+  const av = document.getElementById('top-avatar');
+  av.textContent = currentUser.name.charAt(0);
+  av.style.background = 'rgba(200,169,110,.12)';
+  av.style.color = currentUser.color||'var(--gold)';
+
+  populateMonthYearSelects();
+  buildNav();
+  switchTab('dashboard');
+}
+
+function buildNav(){
+  const role = currentUser.role;
+  const tabs = [
+    { id:'dashboard', label:'Dashboard',        roles:['management','accounts','vertical','hr','pms'] },
+    { id:'mybudget',  label:'My Budget',         roles:['vertical','pms','hr'] },
+    { id:'manpower',  label:'Manpower Reqs',     roles:['vertical','pms','hr','management'] },
+    { id:'hr',        label:'HR Approvals',      roles:['hr'] },
+    { id:'approvals', label:'Approvals',         roles:['management'] },
+    { id:'spends',    label:'Update Spends',     roles:['accounts'] },
+    { id:'admin',     label:'Admin',             roles:['management'] },
+  ];
+  const nav = document.getElementById('main-nav');
+  nav.innerHTML='';
+  tabs.filter(t=>t.roles.includes(role)).forEach(t=>{
+    const el=document.createElement('div');
+    el.className='nav-tab'; el.id='nav-'+t.id;
+    el.onclick=()=>switchTab(t.id);
+    let badge='';
+    if(t.id==='approvals') getPendingCount('pending_mgmt').then(n=>{ if(n>0){el.querySelector('.nbadge')||el.insertAdjacentHTML('beforeend',`<span class="nbadge">${n}</span>`);} });
+    if(t.id==='hr') getPendingCount('pending_hr').then(n=>{ if(n>0){el.insertAdjacentHTML('beforeend',`<span class="nbadge">${n}</span>`);} });
+    el.innerHTML=t.label+badge;
+    nav.appendChild(el);
+  });
+}
+
+async function getPendingCount(status){
+  try{
+    let q = db.collection('budgets').where('status','==',status);
+    const snap = await q.get();
+    return snap.size;
+  }catch(e){return 0;}
+}
+
+function switchTab(id){
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  const navEl=document.getElementById('nav-'+id);
+  const tabEl=document.getElementById('tab-'+id);
+  if(navEl) navEl.classList.add('active');
+  if(tabEl){ tabEl.classList.add('active'); renderTab(id); }
+}
+
+function renderTab(id){
+  switch(id){
+    case 'dashboard': renderDashboard(); break;
+    case 'mybudget':  renderMyBudget(); break;
+    case 'manpower':  renderManpower(); break;
+    case 'hr':        renderHRApprovals(); break;
+    case 'approvals': renderApprovals(); break;
+    case 'spends':    renderSpends(); break;
+    case 'admin':     renderAdmin(); break;
+  }
+}
+
+// ══════════════════════════════════════════════
+//  MONTH / YEAR SELECTS
+// ══════════════════════════════════════════════
+function populateMonthYearSelects(){
+  ['mb-month','mp-month'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.innerHTML=MONTHS.map((m,i)=>`<option value="${i+1}">${m}</option>`).join('');
+    if(el) el.value=new Date().getMonth()+1;
+  });
+  ['mb-year','mp-year'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.innerHTML=[2025,2026,2027].map(y=>`<option value="${y}">${y}</option>`).join('');
+    if(el) el.value=CURR_YEAR;
+  });
+}
+
+// ══════════════════════════════════════════════
+//  DASHBOARD
+// ══════════════════════════════════════════════
+async function renderDashboard(){
+  const el = document.getElementById('tab-dashboard');
+  el.innerHTML = '<div class="empty"><div class="ico">⏳</div><p>Loading…</p></div>';
+
+  try {
+    let query = db.collection('budgets');
+    // Vertical sees only their own
+    if(currentUser.role==='vertical'||currentUser.role==='pms'||currentUser.role==='hr'){
+      query = query.where('vertical','==',currentUser.vertical);
+    }
+    const snap = await query.orderBy('submittedAt','desc').get();
+    const budgets = snap.docs.map(d=>({id:d.id,...d.data()}));
+
+    const totalReq = budgets.reduce((s,b)=>s+(b.requestedAmount||0),0);
+    const totalApv = budgets.reduce((s,b)=>s+(b.approvedAmount||0),0);
+    const totalSpent = budgets.reduce((s,b)=>s+(b.actualSpend||0),0);
+    const saving = totalApv - totalSpent;
+    const pending = budgets.filter(b=>b.status==='pending_mgmt'||b.status==='pending_pms'||b.status==='pending_hr').length;
+
+    // Group by vertical for table
+    const allVerticals = [...new Set(Object.values(USER_MAP).filter(u=>u.vertical).map(u=>u.vertical))];
+    const myVerticals = (currentUser.role==='management'||currentUser.role==='accounts') ? allVerticals : [currentUser.vertical];
+
+    el.innerHTML = `
+      <div class="sec-hdr">
+        <div><div class="sec-title">Dashboard</div><div class="sec-sub">${currentUser.role==='management'||currentUser.role==='accounts'?'Group Overview · All Verticals':'My Vertical · '+currentUser.vertical}</div></div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card gold"><div class="stat-label">Total Budgeted</div><div class="stat-value" style="color:var(--gold)">${fmtINR(totalReq)}</div><div class="stat-sub">${budgets.length} submissions</div></div>
+        <div class="stat-card blue"><div class="stat-label">Approved</div><div class="stat-value" style="color:var(--ael)">${fmtINR(totalApv)}</div><div class="stat-sub">${budgets.filter(b=>b.status==='approved'||b.status==='partial').length} approved</div></div>
+        <div class="stat-card ${totalSpent>totalApv?'red':'green'}"><div class="stat-label">Actual Spend</div><div class="stat-value" style="color:${totalSpent>totalApv?'var(--red)':'var(--green)'}">${fmtINR(totalSpent)}</div><div class="stat-sub">${totalApv>0?Math.round(totalSpent/totalApv*100):0}% utilised</div></div>
+        <div class="stat-card ${saving>=0?'green':'red'}"><div class="stat-label">${saving>=0?'Cost Saving':'Overrun'}</div><div class="stat-value" style="color:${saving>=0?'var(--green)':'var(--red)'}">${fmtINR(Math.abs(saving))}</div><div class="stat-sub">vs approved</div></div>
+        <div class="stat-card teal"><div class="stat-label">Pending</div><div class="stat-value" style="color:var(--teal)">${pending}</div><div class="stat-sub">awaiting action</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Budget Overview by Vertical</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Vertical</th><th>Entity</th><th>Requested</th><th>Approved</th><th>Actual Spend</th><th>Variance</th><th>Status</th><th>Utilisation</th></tr></thead>
+            <tbody>
+              ${myVerticals.map(v=>{
+                const vBudgets = budgets.filter(b=>b.vertical===v);
+                const latest = vBudgets[0];
+                if(!latest) return `<tr><td>${v}</td><td style="font-size:9px;color:var(--muted);">${getEntityForVertical(v)}</td><td colspan="6" style="color:var(--muted);font-size:9px;">No submission</td></tr>`;
+                const apv=latest.approvedAmount||0, spent=latest.actualSpend||0, variance=apv-spent;
+                const util=apv>0?Math.round(spent/apv*100):0;
+                return `<tr>
+                  <td style="font-weight:500;">${v}</td>
+                  <td style="font-size:9px;color:var(--muted);">${latest.entity||getEntityForVertical(v)}</td>
+                  <td>${fmtINR(latest.requestedAmount)}</td>
+                  <td style="color:${apv?'var(--green)':'var(--muted)'};">${apv?fmtINR(apv):'—'}</td>
+                  <td>${spent?fmtINR(spent):'—'}</td>
+                  <td style="color:${variance>=0?'var(--green)':'var(--red)'};">${apv?`${variance>=0?'▼':'▲'} ${fmtINR(Math.abs(variance))}`:'—'}</td>
+                  <td><span class="badge badge-${latest.status}">${statusLabel(latest.status)}</span></td>
+                  <td>${apv?`<div style="font-size:9px;color:var(--muted);margin-bottom:3px;">${util}%</div><div class="prog-bar" style="width:80px;"><div class="prog-fill" style="width:${Math.min(util,100)}%;background:${util>100?'var(--red)':'var(--ael)'}"></div></div>`:'—'}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  } catch(e){
+    el.innerHTML = `<div class="empty"><div class="ico">⚠️</div><p>Error loading data. Check Firestore rules.<br><small style="font-size:9px;">${e.message}</small></p></div>`;
+  }
+}
+
+// ══════════════════════════════════════════════
+//  MY BUDGET
+// ══════════════════════════════════════════════
+async function renderMyBudget(){
+  const el = document.getElementById('tab-mybudget');
+  el.innerHTML = '<div class="empty"><div class="ico">⏳</div><p>Loading…</p></div>';
+  try {
+    const snap = await db.collection('budgets').where('vertical','==',currentUser.vertical).orderBy('submittedAt','desc').get();
+    const budgets = snap.docs.map(d=>({id:d.id,...d.data()}));
+
+    const isPMS = currentUser.role==='pms';
+    const isShared = currentUser.isShared;
+
+    el.innerHTML = `
+      <div class="sec-hdr">
+        <div><div class="sec-title">${currentUser.vertical}</div><div class="sec-sub">Budget submissions & history</div></div>
+        <button class="btn btn-primary btn-sm" onclick="openBudgetModal()">+ Submit Budget</button>
+      </div>
+      ${!budgets.length ? '<div class="empty"><div class="ico">💼</div><p>No budgets submitted yet.</p></div>' : `
+      <div class="table-wrap"><table>
+        <thead><tr><th>Month</th><th>Requested</th><th>Approved</th><th>Actual Spend</th><th>Variance</th><th>Status</th><th>PMS Remarks</th><th>Mgmt Remarks</th><th>Submitted</th></tr></thead>
+        <tbody>
+          ${budgets.map(b=>{
+            const v=(b.approvedAmount||0)-(b.actualSpend||0);
+            return `<tr>
+              <td style="font-weight:500;">${MONTHS[b.month-1]} ${b.year}</td>
+              <td>${fmtINR(b.requestedAmount)}</td>
+              <td style="color:${b.approvedAmount?'var(--green)':'var(--muted)'};">${b.approvedAmount?fmtINR(b.approvedAmount):'—'}</td>
+              <td>${b.actualSpend?fmtINR(b.actualSpend):'—'}</td>
+              <td style="color:${v>=0?'var(--green)':'var(--red)'};">${b.approvedAmount?`${v>=0?'▼':'▲'} ${fmtINR(Math.abs(v))}`:'—'}</td>
+              <td><span class="badge badge-${b.status}">${statusLabel(b.status)}</span></td>
+              <td style="font-size:9px;color:var(--muted);max-width:140px;">${b.pmsRemarks||'—'}</td>
+              <td style="font-size:9px;color:var(--muted);max-width:140px;">${b.mgmtRemarks||'—'}</td>
+              <td style="font-size:9px;color:var(--muted);">${fmtDate(b.submittedAt)}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table></div>`}
+    `;
+  } catch(e){
+    el.innerHTML=`<div class="empty"><div class="ico">⚠️</div><p>${e.message}</p></div>`;
+  }
+}
+
+// ══════════════════════════════════════════════
+//  BUDGET MODAL
+// ══════════════════════════════════════════════
+function openBudgetModal(){
+  lineCounters={};
+  const isPMS = currentUser.role==='pms';
+  const isShared = currentUser.isShared;
+
+  document.getElementById('mb-title').textContent = isPMS ? 'Submit PMS Budget (Bulk + F&P)' : `Submit Budget · ${currentUser.vertical}`;
+  document.getElementById('mb-company-wrap').style.display = isShared ? 'block' : 'none';
+  document.getElementById('mb-notes').value='';
+
+  const sectionsEl = document.getElementById('mb-sections');
+  const addBtn = document.getElementById('mb-add-btn');
+
+  if(isPMS){
+    sectionsEl.innerHTML=`
+      <div class="pms-section">Section A — Bulk Manufacturing</div>
+      <div class="li-wrap" id="li-wrap-bulk">
+        <div class="li-row li-header" style="grid-template-columns:1fr 160px 100px 28px;">
+          <div>Head / Description</div><div>Category</div><div>Amount (₹)</div><div></div>
+        </div>
+      </div>
+      <button class="btn btn-muted btn-sm" onclick="addBudgetLine('bulk')" style="margin-bottom:14px;">+ Add Line (Bulk)</button>
+      <div class="pms-section">Section B — Filling &amp; Packaging</div>
+      <div class="li-wrap" id="li-wrap-pkg">
+        <div class="li-row li-header" style="grid-template-columns:1fr 160px 100px 28px;">
+          <div>Head / Description</div><div>Category</div><div>Amount (₹)</div><div></div>
+        </div>
+      </div>
+      <button class="btn btn-muted btn-sm" onclick="addBudgetLine('pkg')" style="margin-bottom:14px;">+ Add Line (F&amp;P)</button>
+    `;
+    addBtn.style.display='none';
+    addBudgetLine('bulk'); addBudgetLine('pkg');
+  } else {
+    sectionsEl.innerHTML=`
+      <div class="li-wrap" id="li-wrap-main">
+        <div class="li-row li-header" style="grid-template-columns:1fr 160px 100px ${isShared?'120px ':''} 28px;">
+          <div>Head / Description</div><div>Category</div><div>Amount (₹)</div>${isShared?'<div>Company</div>':''}
+          <div></div>
+        </div>
+      </div>
+    `;
+    addBtn.style.display='inline-flex';
+    addBudgetLine('main'); addBudgetLine('main'); addBudgetLine('main');
+  }
+  calcBudgetTotal();
+  openModal('modal-budget');
+}
+
+let liCounter=0;
+function addBudgetLine(section){
+  liCounter++;
+  const id=`li-${section}-${liCounter}`;
+  const wrapId=`li-wrap-${section}`;
+  const wrap=document.getElementById(wrapId);
+  if(!wrap) return;
+  const isShared=currentUser.isShared;
+  const cols=section==='main'&&isShared ? '1fr 160px 100px 120px 28px' : '1fr 160px 100px 28px';
+  const coSelect=section==='main'&&isShared?`<select id="${id}-co" onchange="calcBudgetTotal()" style="border-right:1px solid var(--line);">
+    <option value="APHL">APHL</option><option value="Veridian">Veridian</option><option value="Both">Both</option></select>`:'';
+  const row=document.createElement('div');
+  row.className='li-row'; row.id=id; row.style.gridTemplateColumns=cols;
+  row.innerHTML=`
+    <input type="text" placeholder="e.g. Raw Material Purchase" oninput="calcBudgetTotal()" id="${id}-desc">
+    <select id="${id}-cat" style="border-right:1px solid var(--line);" onchange="calcBudgetTotal()">
+      ${CATEGORIES.map(c=>`<option value="${c}">${c}</option>`).join('')}
+    </select>
+    ${coSelect}
+    <input type="number" placeholder="0" min="0" oninput="calcBudgetTotal()" id="${id}-amt" style="text-align:right;">
+    <button class="del-btn" onclick="document.getElementById('${id}').remove();calcBudgetTotal()">✕</button>
+  `;
+  wrap.appendChild(row);
+}
+
+function calcBudgetTotal(){
+  let total=0;
+  document.querySelectorAll('[id$="-amt"]').forEach(inp=>{ if(inp.closest('#mb-sections')||inp.closest('.li-wrap')) total+=parseFloat(inp.value)||0; });
+  document.getElementById('mb-total').textContent=fmtINR(total);
+}
+
+async function submitBudget(){
+  const month=parseInt(document.getElementById('mb-month').value);
+  const year=parseInt(document.getElementById('mb-year').value);
+  const notes=document.getElementById('mb-notes').value.trim();
+  const isPMS=currentUser.role==='pms';
+  const isShared=currentUser.isShared;
+
+  let items=[], total=0;
+
+  if(isPMS){
+    ['bulk','pkg'].forEach(sec=>{
+      const wrap=document.getElementById(`li-wrap-${sec}`);
+      if(!wrap) return;
+      wrap.querySelectorAll('.li-row:not(.li-header)').forEach(row=>{
+        const desc=row.querySelector('[id$="-desc"]')?.value?.trim();
+        const cat=row.querySelector('[id$="-cat"]')?.value;
+        const amt=parseFloat(row.querySelector('[id$="-amt"]')?.value)||0;
+        if(desc&&amt>0){ items.push({desc,cat,amt,section:sec==='bulk'?'Bulk Manufacturing':'Filling & Packaging'}); total+=amt; }
+      });
+    });
+  } else {
+    const wrap=document.getElementById('li-wrap-main');
+    if(wrap) wrap.querySelectorAll('.li-row:not(.li-header)').forEach(row=>{
+      const desc=row.querySelector('[id$="-desc"]')?.value?.trim();
+      const cat=row.querySelector('[id$="-cat"]')?.value;
+      const amt=parseFloat(row.querySelector('[id$="-amt"]')?.value)||0;
+      const co=isShared?(row.querySelector('[id$="-co"]')?.value||'APHL'):null;
+      if(desc&&amt>0){ items.push({desc,cat,amt,...(co?{company:co}:{})}); total+=amt; }
+    });
+  }
+
+  if(!items.length||total===0){ notify('Add at least one line item with amount','error'); return; }
+
+  // Check duplicate pending
+  const exists=await db.collection('budgets')
+    .where('vertical','==',currentUser.vertical)
+    .where('month','==',month).where('year','==',year)
+    .where('status','in',['pending_mgmt','pending_pms','pending_hr']).get();
+  if(!exists.empty){ notify('A pending budget for this month already exists','error'); return; }
+
+  const status = 'pending_mgmt';
+  const budget={
+    vertical:currentUser.vertical, entity:currentUser.entity, month, year,
+    monthKey:`${year}-${String(month).padStart(2,'0')}`,
+    notes, items, requestedAmount:total,
+    approvedAmount:null, actualSpend:null,
+    status, submittedBy:currentUser.uid, submittedByName:currentUser.name,
+    submittedAt:firebase.firestore.FieldValue.serverTimestamp(),
+    pmsRemarks:null, mgmtRemarks:null, spendItems:[]
+  };
+
+  await db.collection('budgets').add(budget);
+  await addLog(`Budget submitted: ${currentUser.vertical} · ${MONTHS[month-1]} ${year} · ${fmtINR(total)}`,'submit');
+  closeModal('modal-budget');
+  renderMyBudget();
+  buildNav();
+  notify(`Budget submitted for ${MONTHS[month-1]} ${year}`,'success');
+}
+
+// ══════════════════════════════════════════════
+//  MANPOWER REQUISITIONS
+// ══════════════════════════════════════════════
+let mpRoleCounter=0;
+function addMPRole(){
+  mpRoleCounter++;
+  const id=`mp-role-${mpRoleCounter}`;
+  const wrap=document.getElementById('mp-roles-list');
+  const row=document.createElement('div');
+  row.className='li-row'; row.id=id; row.style.gridTemplateColumns='1fr 60px 120px 1fr 28px';
+  row.innerHTML=`
+    <input type="text" placeholder="e.g. Production Supervisor" id="${id}-role">
+    <input type="number" placeholder="1" min="1" id="${id}-count" style="text-align:center;">
+    <input type="number" placeholder="0" min="0" id="${id}-cost" style="text-align:right;">
+    <input type="text" placeholder="Justification…" id="${id}-just">
+    <button class="del-btn" onclick="document.getElementById('${id}').remove()">✕</button>
+  `;
+  wrap.appendChild(row);
+}
+
+function openMPModal(){
+  mpRoleCounter=0;
+  document.getElementById('mp-roles-list').querySelectorAll('.li-row:not(.li-header)').forEach(r=>r.remove());
+  addMPRole();
+  openModal('modal-mp');
+}
+
+async function submitMPReq(){
+  const month=parseInt(document.getElementById('mp-month').value);
+  const year=parseInt(document.getElementById('mp-year').value);
+  const roles=[];
+  document.querySelectorAll('#mp-roles-list .li-row:not(.li-header)').forEach(row=>{
+    const role=row.querySelector('[id$="-role"]')?.value?.trim();
+    const count=parseInt(row.querySelector('[id$="-count"]')?.value)||1;
+    const cost=parseFloat(row.querySelector('[id$="-cost"]')?.value)||0;
+    const just=row.querySelector('[id$="-just"]')?.value?.trim();
+    if(role&&cost>0) roles.push({role,count,cost,just,status:'pending_hr',hrRemarks:null});
+  });
+  if(!roles.length){ notify('Add at least one role','error'); return; }
+  const total=roles.reduce((s,r)=>s+r.cost*r.count,0);
+  await db.collection('manpower').add({
+    vertical:currentUser.vertical, entity:currentUser.entity, month, year,
+    monthKey:`${year}-${String(month).padStart(2,'0')}`,
+    roles, totalCost:total, status:'pending_hr',
+    submittedBy:currentUser.uid, submittedByName:currentUser.name,
+    submittedAt:firebase.firestore.FieldValue.serverTimestamp(),
+    hrRemarks:null, mgmtApproved:false
+  });
+  await addLog(`Manpower req submitted: ${currentUser.vertical} · ${MONTHS[month-1]} ${year} · ${roles.length} roles`,'mp');
+  closeModal('modal-mp');
+  renderManpower();
+  notify('Manpower requisition submitted','success');
+}
+
+async function renderManpower(){
+  const el=document.getElementById('tab-manpower');
+  el.innerHTML='<div class="empty"><div class="ico">⏳</div><p>Loading…</p></div>';
+  try{
+    let q=db.collection('manpower').orderBy('submittedAt','desc');
+    const role=currentUser.role;
+    if(role==='vertical'||role==='pms'||role==='hr') q=q.where('vertical','==',currentUser.vertical);
+    const snap=await q.get();
+    const reqs=snap.docs.map(d=>({id:d.id,...d.data()}));
+
+    const canRaise=role==='vertical'||role==='pms'||role==='hr';
+    el.innerHTML=`
+      <div class="sec-hdr">
+        <div><div class="sec-title">Manpower Requisitions</div><div class="sec-sub">${role==='management'?'All Verticals':'My Vertical'}</div></div>
+        ${canRaise?`<button class="btn btn-primary btn-sm" onclick="openMPModal()">+ Raise Requisition</button>`:''}
+      </div>
+      ${!reqs.length?'<div class="empty"><div class="ico">👥</div><p>No manpower requisitions yet.</p></div>':
+      reqs.map(req=>`
+        <div class="mp-card">
+          <div class="mp-card-head">
+            <div>
+              <div class="mp-title">${req.vertical} · ${MONTHS[req.month-1]} ${req.year}</div>
+              <div class="mp-meta">Submitted by ${req.submittedByName} · ${fmtDate(req.submittedAt)} · Total: ${fmtINR(req.totalCost)}</div>
+            </div>
+            <span class="badge badge-${req.status}">${statusLabel(req.status)}</span>
+          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Role</th><th>Count</th><th>Monthly Cost</th><th>Total</th><th>Justification</th><th>HR Decision</th></tr></thead>
+            <tbody>
+              ${req.roles.map(r=>`<tr>
+                <td>${r.role}</td><td>${r.count}</td><td>${fmtINR(r.cost)}</td>
+                <td>${fmtINR(r.cost*r.count)}</td>
+                <td style="font-size:9px;color:var(--muted);">${r.just||'—'}</td>
+                <td><span class="badge badge-${r.status||'pending_hr'}">${statusLabel(r.status||'pending_hr')}</span>${r.hrRemarks?`<div style="font-size:9px;color:var(--muted);margin-top:3px;">${r.hrRemarks}</div>`:''}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table></div>
+          ${req.hrRemarks?`<div class="remark-box orange" style="margin-top:8px;">HR: ${req.hrRemarks}</div>`:''}
+        </div>
+      `).join('')}
+    `;
+  }catch(e){el.innerHTML=`<div class="empty"><div class="ico">⚠️</div><p>${e.message}</p></div>`;}
+}
+
+// ══════════════════════════════════════════════
+//  HR APPROVALS
+// ══════════════════════════════════════════════
+async function renderHRApprovals(){
+  const el=document.getElementById('tab-hr');
+  el.innerHTML='<div class="empty"><div class="ico">⏳</div><p>Loading…</p></div>';
+  try{
+    const snap=await db.collection('manpower').where('status','==','pending_hr').orderBy('submittedAt','desc').get();
+    const reqs=snap.docs.map(d=>({id:d.id,...d.data()}));
+
+    const doneSnap=await db.collection('manpower').where('status','!=','pending_hr').orderBy('status').orderBy('submittedAt','desc').get();
+    const done=doneSnap.docs.map(d=>({id:d.id,...d.data()}));
+
+    el.innerHTML=`
+      <div class="sec-hdr"><div><div class="sec-title">HR Approvals</div><div class="sec-sub">Review manpower requisitions · Add HR budget</div></div></div>
+      ${reqs.length?`<div style="font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--yellow);margin-bottom:14px;">⏳ Pending Review (${reqs.length})</div>`:''}
+      ${reqs.map(req=>`
+        <div class="mp-card" style="border-color:rgba(232,197,110,.2);">
+          <div class="mp-card-head">
+            <div><div class="mp-title">${req.vertical} · ${MONTHS[req.month-1]} ${req.year}</div>
+            <div class="mp-meta">From: ${req.submittedByName} · ${fmtINR(req.totalCost)}</div></div>
+            <span class="badge badge-pending_hr">Pending HR</span>
+          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Role</th><th>Count</th><th>Monthly Cost</th><th>Justification</th><th>Decision</th></tr></thead>
+            <tbody>
+              ${req.roles.map((r,i)=>`<tr>
+                <td>${r.role}</td><td>${r.count}</td><td>${fmtINR(r.cost*r.count)}</td>
+                <td style="font-size:9px;color:var(--muted);">${r.just||'—'}</td>
+                <td>
+                  <div style="display:flex;gap:5px;flex-wrap:wrap;">
+                    <button class="btn btn-green btn-sm" onclick="hrRoleDecision('${req.id}',${i},'hr_approved',this)">✓ Approve</button>
+                    <button class="btn btn-red btn-sm" onclick="hrRoleDecision('${req.id}',${i},'hr_rejected',this)">✕ Reject</button>
+                  </div>
+                  <input type="text" id="hr-rmk-${req.id}-${i}" placeholder="Remarks…" style="margin-top:5px;width:160px;background:var(--surface3);border:1px solid var(--line2);border-radius:4px;padding:4px 8px;color:var(--text);font-family:'DM Mono',monospace;font-size:10px;outline:none;">
+                </td>
+              </tr>`).join('')}
+            </tbody>
+          </table></div>
+          <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <input type="text" id="hr-overall-${req.id}" placeholder="Overall HR remarks…" style="flex:1;background:var(--surface3);border:1px solid var(--line2);border-radius:4px;padding:7px 10px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;outline:none;">
+            <button class="btn btn-gold btn-sm" onclick="submitHRDecision('${req.id}')">Submit HR Decision →</button>
+          </div>
+        </div>
+      `).join('')}
+      ${!reqs.length?'<div class="empty"><div class="ico">✓</div><p>No pending manpower requisitions</p></div>':''}
+      ${done.length?`<div class="divider"></div><div style="font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">Reviewed History</div>
+      ${done.slice(0,10).map(req=>`<div class="mp-card">
+        <div class="mp-card-head">
+          <div><div class="mp-title">${req.vertical} · ${MONTHS[req.month-1]} ${req.year}</div>
+          <div class="mp-meta">${req.submittedByName} · ${fmtINR(req.totalCost)}</div></div>
+          <span class="badge badge-${req.status}">${statusLabel(req.status)}</span>
+        </div>
+        ${req.hrRemarks?`<div class="remark-box orange" style="margin-top:6px;">${req.hrRemarks}</div>`:''}
+      </div>`).join('')}`:''}
+    `;
+  }catch(e){el.innerHTML=`<div class="empty"><div class="ico">⚠️</div><p>${e.message}</p></div>`;}
+}
+
+// Track role decisions in memory before submitting
+const hrRoleDecisions={};
+function hrRoleDecision(reqId,idx,decision,btn){
+  if(!hrRoleDecisions[reqId]) hrRoleDecisions[reqId]={};
+  hrRoleDecisions[reqId][idx]=decision;
+  const row=btn.closest('td');
+  row.querySelectorAll('.btn-green,.btn-red').forEach(b=>b.style.opacity='.4');
+  btn.style.opacity='1';
+  btn.style.boxShadow=`0 0 12px ${decision==='hr_approved'?'rgba(109,191,130,.3)':'rgba(232,96,74,.3)'}`;
+}
+
+async function submitHRDecision(reqId){
+  const snap=await db.collection('manpower').doc(reqId).get();
+  const req={id:reqId,...snap.data()};
+  const decisions=hrRoleDecisions[reqId]||{};
+  const overallRemarks=document.getElementById(`hr-overall-${reqId}`)?.value?.trim()||'';
+
+  const updatedRoles=req.roles.map((r,i)=>{
+    const dec=decisions[i];
+    const rmk=document.getElementById(`hr-rmk-${reqId}-${i}`)?.value?.trim()||'';
+    return {...r, status:dec||'pending_hr', hrRemarks:rmk};
+  });
+
+  const allDecided=updatedRoles.every(r=>r.status!=='pending_hr');
+  const anyApproved=updatedRoles.some(r=>r.status==='hr_approved');
+  const newStatus=allDecided?(anyApproved?'hr_approved':'hr_rejected'):'pending_hr';
+  const approvedTotal=updatedRoles.filter(r=>r.status==='hr_approved').reduce((s,r)=>s+r.cost*r.count,0);
+
+  await db.collection('manpower').doc(reqId).update({
+    roles:updatedRoles, status:newStatus, hrRemarks:overallRemarks,
+    hrReviewedBy:currentUser.name, hrReviewedAt:firebase.firestore.FieldValue.serverTimestamp(),
+    approvedTotal
+  });
+  await addLog(`HR decision: ${req.vertical} · ${MONTHS[req.month-1]} ${req.year} · ${newStatus}`,'hr');
+  delete hrRoleDecisions[reqId];
+  renderHRApprovals();
+  buildNav();
+  notify('HR decision submitted','success');
+}
+
+// ══════════════════════════════════════════════
+//  MANAGEMENT APPROVALS
+// ══════════════════════════════════════════════
+async function renderApprovals(){
+  const el=document.getElementById('tab-approvals');
+  el.innerHTML='<div class="empty"><div class="ico">⏳</div><p>Loading…</p></div>';
+  try{
+    const pendSnap=await db.collection('budgets').where('status','==','pending_mgmt').orderBy('submittedAt','desc').get();
+    const pending=pendSnap.docs.map(d=>({id:d.id,...d.data()}));
+
+    const doneSnap=await db.collection('budgets').where('status','in',['approved','partial','rejected']).orderBy('submittedAt','desc').get();
+    const done=doneSnap.docs.map(d=>({id:d.id,...d.data()}));
+
+    // HR-approved manpower for management
+    const mpSnap=await db.collection('manpower').where('status','==','hr_approved').get();
+    const mpPending=mpSnap.docs.map(d=>({id:d.id,...d.data()}));
+
+    el.innerHTML=`
+      <div class="sec-hdr"><div><div class="sec-title">Budget Approvals</div><div class="sec-sub">Review vertical budget submissions</div></div></div>
+
+      ${mpPending.length?`
+        <div style="font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--purple);margin-bottom:12px;">👥 HR-Approved Manpower · Pending Final Approval (${mpPending.length})</div>
+        ${mpPending.map(mp=>`
+          <div class="mp-card" style="border-color:rgba(155,127,212,.2);margin-bottom:10px;">
+            <div class="mp-card-head">
+              <div><div class="mp-title">${mp.vertical} · ${MONTHS[mp.month-1]} ${mp.year}</div>
+              <div class="mp-meta">Approved by HR · ${fmtINR(mp.approvedTotal||0)}</div></div>
+              <div style="display:flex;gap:7px;">
+                <button class="btn btn-green btn-sm" onclick="approveMPFinal('${mp.id}','approved')">✓ Approve</button>
+                <button class="btn btn-red btn-sm" onclick="approveMPFinal('${mp.id}','rejected')">✕ Reject</button>
+              </div>
+            </div>
+            ${mp.hrRemarks?`<div class="remark-box orange">HR: ${mp.hrRemarks}</div>`:''}
+          </div>
+        `).join('')}
+        <div class="divider"></div>
+      `:''}
+
+      ${pending.length?`<div style="font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--yellow);margin-bottom:14px;">⏳ Pending Budget Approval (${pending.length})</div>`:''}
+      ${pending.length?`<div class="table-wrap"><table>
+        <thead><tr><th>Vertical</th><th>Entity</th><th>Month</th><th>Requested</th><th>Notes</th><th>Submitted</th><th>Action</th></tr></thead>
+        <tbody>
+          ${pending.map(b=>`<tr>
+            <td style="font-weight:500;">${b.vertical}</td>
+            <td style="font-size:9px;color:var(--muted);">${b.entity}</td>
+            <td>${MONTHS[b.month-1]} ${b.year}</td>
+            <td style="color:var(--gold);">${fmtINR(b.requestedAmount)}</td>
+            <td style="font-size:9px;color:var(--muted);max-width:140px;">${b.notes||'—'}</td>
+            <td style="font-size:9px;color:var(--muted);">${fmtDate(b.submittedAt)}</td>
+            <td><button class="btn btn-blue btn-sm" onclick="openApproveModal('${b.id}')">Review</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table></div>`:
+      `<div class="empty"><div class="ico">✓</div><p>No pending budget approvals</p></div>`}
+
+      ${done.length?`<div class="divider"></div>
+      <div style="font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">History</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Vertical</th><th>Month</th><th>Requested</th><th>Approved</th><th>Status</th><th>Remarks</th><th>By</th></tr></thead>
+        <tbody>
+          ${done.map(b=>`<tr>
+            <td>${b.vertical}</td><td>${MONTHS[b.month-1]} ${b.year}</td>
+            <td>${fmtINR(b.requestedAmount)}</td>
+            <td style="color:${b.approvedAmount?'var(--green)':'var(--muted)'};">${b.approvedAmount?fmtINR(b.approvedAmount):'—'}</td>
+            <td><span class="badge badge-${b.status}">${statusLabel(b.status)}</span></td>
+            <td style="font-size:9px;color:var(--muted);max-width:140px;">${b.mgmtRemarks||'—'}</td>
+            <td style="font-size:9px;color:var(--muted);">${b.approvedByName||'—'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table></div>`:''}
+    `;
+  }catch(e){el.innerHTML=`<div class="empty"><div class="ico">⚠️</div><p>${e.message}</p></div>`;}
+}
+
+async function openApproveModal(id){
+  activeBudgetId=id;
+  const doc=await db.collection('budgets').doc(id).get();
+  const b={id,...doc.data()};
+
+  document.getElementById('apv-title').textContent=`${b.vertical} · ${MONTHS[b.month-1]} ${b.year}`;
+  document.getElementById('apv-remarks').value='';
+
+  const isPMSBudget = b.vertical==='PMS';
+  const isShared = ['Back Office Admin','Asset Management','Shared CRM','HR'].includes(b.vertical);
+
+  let body=`
+    <div class="apv-detail">
+      <div class="apv-row"><span class="apv-lbl">Vertical</span><span class="apv-val">${b.vertical}</span></div>
+      <div class="apv-row"><span class="apv-lbl">Entity</span><span class="apv-val">${b.entity}</span></div>
+      <div class="apv-row"><span class="apv-lbl">Period</span><span class="apv-val">${MONTHS[b.month-1]} ${b.year}</span></div>
+      <div class="apv-row"><span class="apv-lbl">Requested</span><span class="apv-val" style="font-size:18px;font-family:'Cormorant Garamond',serif;color:var(--gold);">${fmtINR(b.requestedAmount)}</span></div>
+      ${b.notes?`<div class="apv-row"><span class="apv-lbl">Notes</span><span class="apv-val" style="font-size:10px;color:var(--muted);">${b.notes}</span></div>`:''}
+    </div>`;
+
+  if(isPMSBudget){
+    ['Bulk Manufacturing','Filling & Packaging'].forEach(sec=>{
+      const secItems=b.items.filter(i=>i.section===sec);
+      if(!secItems.length) return;
+      body+=`<div class="pms-section">${sec}</div>`;
+      body+=`<div class="table-wrap"><table><thead><tr><th>Description</th><th>Category</th><th>Amount</th></tr></thead><tbody>
+        ${secItems.map(it=>`<tr><td>${it.desc}</td><td style="font-size:9px;color:var(--muted);">${it.cat}</td><td>${fmtINR(it.amt)}</td></tr>`).join('')}
+      </tbody></table></div>`;
+    });
+  } else {
+    body+=`<div class="table-wrap"><table><thead><tr><th>Description</th><th>Category</th>${isShared?'<th>Company</th>':''}<th>Amount</th></tr></thead><tbody>
+      ${b.items.map(it=>`<tr><td>${it.desc}</td><td style="font-size:9px;color:var(--muted);">${it.cat}</td>
+        ${isShared?`<td><span class="co-tag co-${(it.company||'APHL').toLowerCase()}">${it.company||'APHL'}</span></td>`:''}
+        <td>${fmtINR(it.amt)}</td></tr>`).join('')}
+      <tr style="border-top:2px solid var(--line2);"><td colspan="${isShared?3:2}" style="font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;">Total</td>
+        <td style="font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--gold);">${fmtINR(b.requestedAmount)}</td></tr>
+    </tbody></table></div>`;
+  }
+
+  document.getElementById('apv-body').innerHTML=body;
+  document.getElementById('apv-footer').innerHTML=`
+    <button class="btn btn-muted btn-sm" onclick="closeModal('modal-approve')">Cancel</button>
+    <button class="btn btn-red btn-sm" onclick="doApproval('rejected')">✕ Reject</button>
+    <button class="btn btn-orange btn-sm" onclick="openPartialModal()">◐ Part Approve</button>
+    <button class="btn btn-green btn-sm" onclick="doApproval('approved')">✓ Approve</button>
+  `;
+  openModal('modal-approve');
+}
+
+function openPartialModal(){
+  db.collection('budgets').doc(activeBudgetId).get().then(d=>{
+    document.getElementById('pa-amount').value=d.data().requestedAmount;
+    document.getElementById('pa-remarks').value='';
+  });
+  closeModal('modal-approve');
+  openModal('modal-partial');
+}
+
+async function confirmPartial(){
+  const amt=parseFloat(document.getElementById('pa-amount').value);
+  const remarks=document.getElementById('pa-remarks').value.trim();
+  const d=await db.collection('budgets').doc(activeBudgetId).get();
+  if(amt<=0||amt>d.data().requestedAmount){ notify('Enter valid amount ≤ requested','error'); return; }
+  await db.collection('budgets').doc(activeBudgetId).update({
+    status:'partial', approvedAmount:amt, mgmtRemarks:remarks,
+    approvedByName:currentUser.name, approvedAt:firebase.firestore.FieldValue.serverTimestamp()
+  });
+  await addLog(`Partial approval: ${d.data().vertical} · ${fmtINR(amt)}`,'partial');
+  closeModal('modal-partial');
+  renderApprovals(); buildNav();
+  notify('Partial approval saved','success');
+}
+
+async function doApproval(action){
+  const remarks=document.getElementById('apv-remarks').value.trim();
+  const d=await db.collection('budgets').doc(activeBudgetId).get();
+  const b=d.data();
+  const approvedAmount=action==='approved'?b.requestedAmount:0;
+  await db.collection('budgets').doc(activeBudgetId).update({
+    status:action, approvedAmount, mgmtRemarks:remarks,
+    approvedByName:currentUser.name, approvedAt:firebase.firestore.FieldValue.serverTimestamp()
+  });
+  await addLog(`Budget ${action}: ${b.vertical} · ${MONTHS[b.month-1]} ${b.year}`,'approval');
+  closeModal('modal-approve');
+  renderApprovals(); buildNav();
+  notify(`Budget ${action}`,'success');
+}
+
+async function approveMPFinal(mpId,action){
+  const remarks=prompt(`Remarks for ${action}:`)||'';
+  await db.collection('manpower').doc(mpId).update({
+    mgmtApproved:action==='approved', mgmtStatus:action, mgmtRemarks:remarks,
+    mgmtReviewedBy:currentUser.name, mgmtReviewedAt:firebase.firestore.FieldValue.serverTimestamp(),
+    status:action==='approved'?'approved':'rejected'
+  });
+  await addLog(`Manpower ${action} by management`,'approval');
+  renderApprovals();
+  notify(`Manpower ${action}`,'success');
+}
+
+// ══════════════════════════════════════════════
+//  ACTUAL SPENDS
+// ══════════════════════════════════════════════
+let activeSpendsId=null;
+async function renderSpends(){
+  const el=document.getElementById('tab-spends');
+  el.innerHTML='<div class="empty"><div class="ico">⏳</div><p>Loading…</p></div>';
+  try{
+    const snap=await db.collection('budgets').where('status','in',['approved','partial']).orderBy('submittedAt','desc').get();
+    const budgets=snap.docs.map(d=>({id:d.id,...d.data()}));
+    el.innerHTML=`
+      <div class="sec-hdr"><div><div class="sec-title">Actual Spends</div><div class="sec-sub">Update expenditure against approved budgets</div></div></div>
+      ${!budgets.length?'<div class="empty"><div class="ico">📋</div><p>No approved budgets to update</p></div>':
+      `<div class="table-wrap"><table>
+        <thead><tr><th>Vertical</th><th>Entity</th><th>Month</th><th>Approved</th><th>Actual</th><th>Variance</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody>
+          ${budgets.map(b=>{
+            const v=(b.approvedAmount||0)-(b.actualSpend||0);
+            return `<tr>
+              <td style="font-weight:500;">${b.vertical}</td>
+              <td style="font-size:9px;color:var(--muted);">${b.entity}</td>
+              <td>${MONTHS[b.month-1]} ${b.year}</td>
+              <td style="color:var(--ael);">${fmtINR(b.approvedAmount)}</td>
+              <td>${b.actualSpend?fmtINR(b.actualSpend):'—'}</td>
+              <td style="color:${v>=0?'var(--green)':'var(--red)'};">${b.actualSpend!=null?`${v>=0?'▼':'▲'} ${fmtINR(Math.abs(v))}`:'—'}</td>
+              <td><span class="badge badge-${b.status}">${statusLabel(b.status)}</span></td>
+              <td><button class="btn btn-primary btn-sm" onclick="openSpendsModal('${b.id}')">Update</button></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table></div>`}
+    `;
+  }catch(e){el.innerHTML=`<div class="empty"><div class="ico">⚠️</div><p>${e.message}</p></div>`;}
+}
+
+async function openSpendsModal(id){
+  activeSpendsId=id;
+  const doc=await db.collection('budgets').doc(id).get();
+  const b={id,...doc.data()};
+  const isShared=['Back Office Admin','Asset Management','Shared CRM','HR'].includes(b.vertical);
+  document.getElementById('sp-title').textContent=`${b.vertical} · ${MONTHS[b.month-1]} ${b.year}`;
+  document.getElementById('sp-notes').value=b.accountsNotes||'';
+
+  let html=`<div class="apv-detail">
+    <div class="apv-row"><span class="apv-lbl">Approved Budget</span><span style="color:var(--ael);">${fmtINR(b.approvedAmount)}</span></div>
+    <div class="apv-row"><span class="apv-lbl">Current Actual</span><span>${b.actualSpend?fmtINR(b.actualSpend):'Not entered'}</span></div>
+  </div>
+  <div class="li-wrap">
+    <div class="li-row li-header" style="grid-template-columns:1fr 160px ${isShared?'100px ':''}100px 100px;">
+      <div>Description</div><div>Category</div>${isShared?'<div>Company</div>':''}<div>Budgeted</div><div>Actual (₹)</div>
+    </div>
+    ${b.items.map((it,i)=>`
+      <div class="li-row" style="grid-template-columns:1fr 160px ${isShared?'100px ':''}100px 100px;">
+        <input type="text" value="${it.desc}" readonly style="opacity:.6;">
+        <input type="text" value="${it.cat}" readonly style="opacity:.6;border-right:1px solid var(--line);">
+        ${isShared?`<input type="text" value="${it.company||'—'}" readonly style="opacity:.6;border-right:1px solid var(--line);">`:''}
+        <input type="text" value="${fmtINR(it.amt)}" readonly style="opacity:.5;border-right:1px solid var(--line);">
+        <input type="number" id="sp-${i}" value="${(b.spendItems&&b.spendItems[i]&&b.spendItems[i].actual)||''}" placeholder="${it.amt}" min="0" oninput="calcSpendsTotal()">
+      </div>
+    `).join('')}
+  </div>`;
+  document.getElementById('sp-body').innerHTML=html;
+  openModal('modal-spends');
+  setTimeout(calcSpendsTotal,50);
+}
+
+async function calcSpendsTotal(){
+  const doc=await db.collection('budgets').doc(activeSpendsId).get();
+  const b=doc.data();
+  let total=0;
+  b.items.forEach((_,i)=>{ total+=parseFloat(document.getElementById(`sp-${i}`)?.value)||0; });
+  const el=document.getElementById('sp-total');
+  if(el){ el.textContent=fmtINR(total); el.style.color=total>(b.approvedAmount||0)?'var(--red)':'var(--green)'; }
+}
+
+async function saveSpends(){
+  const doc=await db.collection('budgets').doc(activeSpendsId).get();
+  const b=doc.data();
+  let total=0;
+  const spendItems=b.items.map((it,i)=>{
+    const actual=parseFloat(document.getElementById(`sp-${i}`)?.value)||0;
+    total+=actual;
+    return {...it,actual};
+  });
+  await db.collection('budgets').doc(activeSpendsId).update({
+    spendItems, actualSpend:total,
+    accountsNotes:document.getElementById('sp-notes').value.trim(),
+    spendUpdatedAt:firebase.firestore.FieldValue.serverTimestamp(),
+    spendUpdatedBy:currentUser.name
+  });
+  await addLog(`Spends updated: ${b.vertical} · ${MONTHS[b.month-1]} ${b.year} · ${fmtINR(total)}`,'spend');
+  closeModal('modal-spends');
+  renderSpends(); renderDashboard();
+  notify('Spends saved','success');
+}
+
+// ══════════════════════════════════════════════
+//  ADMIN
+// ══════════════════════════════════════════════
+async function renderAdmin(){
+  const el=document.getElementById('tab-admin');
+  el.innerHTML='<div class="empty"><div class="ico">⏳</div><p>Loading…</p></div>';
+  try{
+    const logSnap=await db.collection('log').orderBy('ts','desc').limit(60).get();
+    const logs=logSnap.docs.map(d=>d.data());
+    const budSnap=await db.collection('budgets').get();
+    const budgets=budSnap.docs.map(d=>d.data());
+
+    el.innerHTML=`
+      <div class="sec-hdr"><div><div class="sec-title">System Administration</div><div class="sec-sub">User directory · Audit log</div></div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:22px;">
+        <div class="card">
+          <div class="card-title">User Directory (15)</div>
+          ${Object.entries(USER_MAP).map(([uid,u])=>`
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-size:11px;">
+              <div>
+                <div style="font-weight:500;">${u.name}</div>
+                <div style="font-size:8.5px;color:var(--muted);">${u.role}${u.vertical?' · '+u.vertical:''}</div>
+              </div>
+              <span class="badge badge-${u.role==='management'?'approved':u.role==='accounts'?'partial':u.role==='hr'?'pending_hr':u.role==='pms'?'pending_pms':'pending_mgmt'}">${u.role}</span>
+            </div>
+          `).join('')}
+        </div>
+        <div class="card">
+          <div class="card-title">Budget Summary</div>
+          ${['pending_mgmt','approved','partial','rejected'].map(s=>{
+            const cnt=budgets.filter(b=>b.status===s).length;
+            const amt=budgets.filter(b=>b.status===s).reduce((sum,b)=>sum+(b.approvedAmount||b.requestedAmount||0),0);
+            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:11px;">
+              <span><span class="badge badge-${s}" style="margin-right:8px;">${statusLabel(s)}</span>${cnt} submissions</span>
+              <span style="color:var(--gold);">${fmtINR(amt)}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Audit Log</div>
+        <div style="max-height:320px;overflow-y:auto;">
+          ${logs.length?logs.map(l=>`
+            <div class="log-entry">
+              <div class="log-dot" style="background:${l.type==='submit'?'var(--ael)':l.type==='approval'||l.type==='approved'?'var(--green)':l.type==='rejected'?'var(--red)':l.type==='spend'?'var(--teal)':l.type==='hr'?'var(--purple)':'var(--muted)'}"></div>
+              <div style="flex:1;font-size:10px;">${l.msg}</div>
+              <div style="font-size:9px;color:var(--muted);white-space:nowrap;">${fmtDate(l.ts)}<br>${l.user}</div>
+            </div>
+          `).join(''):'<div style="font-size:11px;color:var(--muted);padding:10px 0;">No activity yet</div>'}
+        </div>
+      </div>
+    `;
+  }catch(e){el.innerHTML=`<div class="empty"><div class="ico">⚠️</div><p>${e.message}</p></div>`;}
+}
+
+// ══════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════
+async function addLog(msg,type){
+  try{
+    await db.collection('log').add({
+      msg, type, user:currentUser.name,
+      ts:firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }catch(e){}
+}
+
+function fmtINR(n){
+  if(n==null||n===undefined) return '—';
+  return '₹'+Math.round(n).toLocaleString('en-IN');
+}
+function fmtDate(ts){
+  if(!ts) return '—';
+  const d=ts.toDate?ts.toDate():new Date(ts);
+  return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'});
+}
+function statusLabel(s){
+  const map={pending_mgmt:'Pending Mgmt',pending_pms:'Pending PMS',pending_hr:'Pending HR',
+    pms_approved:'PMS Approved',pms_partial:'PMS Partial',pms_rejected:'PMS Rejected',
+    hr_approved:'HR Approved',hr_rejected:'HR Rejected',
+    approved:'Approved',partial:'Partial',rejected:'Rejected',draft:'Draft'};
+  return map[s]||s;
+}
+function getEntityForVertical(v){
+  const u=Object.values(USER_MAP).find(x=>x.vertical===v);
+  return u?u.entity:'—';
+}
+
+function openModal(id){ document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
+document.querySelectorAll('.modal-overlay').forEach(ov=>{
+  ov.addEventListener('click',e=>{ if(e.target===ov) ov.classList.add('hidden'); });
+});
+
+let notifTimer;
+function notify(msg,type='info'){
+  document.querySelector('.notif')?.remove();
+  clearTimeout(notifTimer);
+  const icons={success:'✓',error:'✕',info:'ℹ'};
+  const colors={success:'var(--green)',error:'var(--red)',info:'var(--ael)'};
+  const el=document.createElement('div');
+  el.className=`notif ${type}`;
+  el.innerHTML=`<span style="color:${colors[type]};font-size:14px;">${icons[type]}</span> ${msg}`;
+  document.body.appendChild(el);
+  notifTimer=setTimeout(()=>el.remove(),3400);
+}
+</script>
+</body>
+</html>
